@@ -11,7 +11,7 @@ api_key = os.getenv("OPENAI_API_KEY")
 if not api_key:
     st.error(
         "OPENAI_API_KEY environment variable is not set. "
-        "Please configure it in your Streamlit deployment settings."
+        "Please configure it in your environment or Streamlit deployment settings."
     )
     st.stop()
 
@@ -83,7 +83,6 @@ if st.button("Generate cityscape images"):
         with st.spinner(f"Generating image(s) for {location}..."):
             try:
                 for idx in range(num_images):
-                    # Slight steering phrase to reduce prompt rewriting quirks
                     prompt = (
                         f"I want a {STYLE_PROMPT} "
                         f"Focus on {location} landmarks and skyline."
@@ -106,4 +105,37 @@ if st.button("Generate cityscape images"):
                         .replace(",", "")
                         .replace(" ", "_")
                     )
-                    fname = f"{loc_slug}_cityscape_{idx + 
+                    fname = f"{loc_slug}_cityscape_{idx + 1}.png"
+
+                    st.session_state.generated_images.append(img)
+                    st.session_state.generated_filenames.append(fname)
+            except Exception as e:
+                st.error(f"API Error: {e}")
+
+# ---------- Display Logic ----------
+if st.session_state.generated_images:
+    st.markdown("---")
+    st.markdown(
+        f"### Final Preview – {st.session_state.generated_location or location}"
+    )
+
+    cols = st.columns(len(st.session_state.generated_images))
+    for col, img, fname in zip(
+        cols,
+        st.session_state.generated_images,
+        st.session_state.generated_filenames,
+    ):
+        with col:
+            st.image(img, caption=fname)
+
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            buf.seek(0)
+
+            st.download_button(
+                label="Download PNG",
+                data=buf.getvalue(),
+                file_name=fname,
+                mime="image/png",
+                key=fname,
+            )
